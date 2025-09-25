@@ -60,15 +60,19 @@ class MyHTTPHandler(BaseHTTPRequestHandler):
                     self.generate_response(404, f'Not Found', f'404')
         
         # /search?q={query}
-        elif len(endpoint) == 1 and re.match(r'search\?q=', endpoint[0]):
+        elif len(endpoint) == 1 and re.match(r'search', endpoint[0]):
             if not hasattr(self.server, "papers"):
                 self.generate_response(500, f'Internal Server Error', ["500 Internal Server Error"])
             else:
-                query = endpoint[0][len("search?q="):].strip()
-                if len(query) == 0:
+                query = endpoint[0][len("search"):]
+                prefix = r'\?q='
+                prefix_len = len(prefix) - 1
+                if not re.match(prefix, query) or len(query[prefix_len:].strip()) == 0:
                     self.generate_response(400, f'Bad Request', f'400')
                 else:
+                    query = query[prefix_len:].strip()
                     data = { "query": query, "results": [] }
+                    total_matches = 0
                     for paper in self.server.papers:
                         result = collect_data(paper, ["arxiv_id", "title"])
                         result["match_score"] = 0
@@ -85,7 +89,8 @@ class MyHTTPHandler(BaseHTTPRequestHandler):
                                 result["matches_in"].append("abstract")
                         if result["match_score"] > 0:
                             data["results"].append(result)
-                    self.generate_response(200, f'OK', data)
+                            total_matches += result["match_score"]
+                    self.generate_response(200, f'OK ({total_matches} matches)', data)
         
         # /stats
         elif len(endpoint) == 1 and endpoint[0] == "stats":
@@ -151,7 +156,7 @@ def main():
         exit(1)
 
     # Start server
-    print(f'Launching server...', flush=True)
+    print(f'Starting server...\n', flush=True)
     server_address = ("", port)
     server = HTTPServer(server_address, MyHTTPHandler)
     server.papers = papers
