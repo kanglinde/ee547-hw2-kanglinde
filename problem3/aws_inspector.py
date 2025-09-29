@@ -82,7 +82,7 @@ def ec2_inst(region):
                         'instance_type': inst['InstanceType'],
                         'state': inst['State']['Name'],
                         'public_ip': inst.get('PublicIpAddress', '-'),
-                        'private_ip': inst['PrivateIpAddress'],
+                        'private_ip': inst.get('PrivateIpAddress', '-'),
                         'availability_zone': inst['Placement']['AvailabilityZone'],
                         'launch_time': format_datetime(inst['LaunchTime']),
                         'ami_id': inst['ImageId'],
@@ -180,9 +180,9 @@ def make_table(data):
     table.append("")
 
     table.append(f'EC2 INSTANCES ({data["summary"]["running_instances"]} running, {len(data["resources"]["ec2_instances"]) - data["summary"]["running_instances"]} stopped)')
-    table.append(f'{"Instance ID":<20} {"Type":<10} {"State":<10} {"Public IP":<15} {"Launch Time":<15}')
+    table.append(f'{"Instance ID":<20} {"Type":<10} {"State":<15} {"Public IP":<15} {"Launch Time":<15}')
     for inst in data['resources']['ec2_instances']:
-        table.append(f'{inst["instance_id"]:<20} {inst["instance_type"]:<10} {inst["state"]:<10} {inst["public_ip"]:<15} {inst["launch_time"].replace("T", " ").replace("Z", ""):<15}')
+        table.append(f'{inst["instance_id"]:<20} {inst["instance_type"]:<10} {inst["state"]:<15} {inst["public_ip"]:<15} {inst["launch_time"].replace("T", " ").replace("Z", ""):<15}')
     table.append("")
 
     table.append(f'S3 BUCKETS ({data["summary"]["total_buckets"]} total)')
