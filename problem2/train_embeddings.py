@@ -1,5 +1,5 @@
 import sys
-import os
+import argparse
 import json
 import re
 import time
@@ -12,20 +12,14 @@ HIDDEN_DIM = 256
 EMBEDDING_DIM = 64
 PARAM_LIMIT = 2000000
 
-def parse_argv(argv):
-    usage = "Usage: python train_embeddings.py <input_papers.json> <output_dir> [--epochs 50] [--batch_size 32]"
-    if len(argv) < 7 or argv[3] != "--epochs" or argv[5] != "--batch_size":
-        print(usage)
-        exit(1)
-    input = argv[1]
-    output = argv[2]
-    try:
-        epoch = int(argv[4])
-        batch = int(argv[6])
-    except Exception as e:
-        print(usage)
-        exit(1)
-    return input, output, epoch, batch
+def parse_arg():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input")
+    parser.add_argument("output")
+    parser.add_argument("--epochs", type=int, default=50)
+    parser.add_argument("--batch_size", type=int, default=32)
+    args = parser.parse_args()
+    return args.input, args.output, args.epochs, args.batch_size
 
 def load_data(input):
     print("Loading abstracts from papers.json...", flush=True)
@@ -131,6 +125,9 @@ def create_batches(data, batch_size):
         batches.append(data[i: i+batch_size])
     return batches
 
+def format_f(val, precision):
+    return float(f'{val:.{precision}f}')
+
 def train_model(epochs, batches, vocab_size, hidden_dim, embedding_dim):
     print("Training autoencoder...", flush=True)
     model = TextAutoencoder(vocab_size, hidden_dim, embedding_dim)
@@ -148,22 +145,20 @@ def train_model(epochs, batches, vocab_size, hidden_dim, embedding_dim):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-        print(f'Epoch {i+1}/{epochs}, Loss: {loss.item():.4f}', flush=True)
+        print(f'Epoch {i+1}/{epochs}, Loss: {format_f(loss.item(), 4)}', flush=True)
 
-    print(f'Training complete in {(time.time()-start_time):.2f} seconds', flush=True)
-    return model, float(f'{loss.item():.4f}')
+    print(f'Training complete in {format_f(time.time()-start_time, 2)} seconds', flush=True)
+    return model, format_f(loss.item(), 4)
 
 def create_embedding(BoW, model):
     loss_func = nn.BCELoss()
     input = torch.tensor(BoW, dtype=torch.float)
     reconstruction, embedding = model(input)
     loss = loss_func(reconstruction, input)
-    embeddings = []
-    for em in embedding: embeddings.append(float(f'{em:.4f}'))
-    return embeddings, float(f'{loss.item():.4f}')
+    return [format_f(em, 4) for em in embedding], format_f(loss.item(), 4)
 
 def main():
-    input, output, epochs, batch_size = parse_argv(sys.argv)
+    input, output, epochs, batch_size = parse_arg()
     output = "/data/output"
 
     # Load data
@@ -203,18 +198,6 @@ def main():
     model, final_loss = train_model(epochs, batches, vocab_size, HIDDEN_DIM, EMBEDDING_DIM)
     end_time = time_stamp()
 
-    # Generate output
-    embeddings = []
-    for i in range(len(BoW)):
-        embedding, loss = create_embedding(BoW[i], model)
-        embeddings.append({
-            "arxiv_id": arxiv_id[i],
-            "embedding": embedding,
-            "reconstruction_loss": loss
-        })
-    with open(f'{output}/embeddings.json', 'w') as file:
-        json.dump(embeddings, file, indent=2)
-
     # save model
     torch.save({
         'model_state_dict': model.state_dict(),
@@ -230,6 +213,18 @@ def main():
     #model2 = TextAutoencoder(vocab_size, HIDDEN_DIM, EMBEDDING_DIM)
     #model2.load_state_dict(torch.load(f'{output}/model.pth')["model_state_dict"])
     #model2.eval()
+
+    # Generate output
+    embeddings = []
+    for i in range(len(BoW)):
+        embedding, loss = create_embedding(BoW[i], model)
+        embeddings.append({
+            "arxiv_id": arxiv_id[i],
+            "embedding": embedding,
+            "reconstruction_loss": loss
+        })
+    with open(f'{output}/embeddings.json', 'w') as file:
+        json.dump(embeddings, file, indent=2)
 
     vocabulary = {
         "vocab_to_idx": vocab_to_idx,
