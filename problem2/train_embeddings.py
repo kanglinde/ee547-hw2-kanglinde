@@ -34,10 +34,10 @@ def load_data(input):
                 abstract.append(paper["abstract"])
     except FileNotFoundError:
         print(f'Error: file not found: {input}')
-        exit(1)
+        sys.exit(1)
     except Exception as e:
         print(f'Error: {str(e)}')
-        exit(1)
+        sys.exit(1)
     print(f'Found {len(abstract)} abstracts', flush=True)
     return arxiv_id, abstract
 
