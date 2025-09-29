@@ -131,7 +131,7 @@ def main():
     # checking input
     if len(sys.argv) < 2:
         print(f'Usage: python {sys.argv[0]} <port>')
-        exit(1)
+        sys.exit(1)
     port = int(sys.argv[1])
     papers_path = "sample_data/papers.json"
     corpus_path = "sample_data/corpus_analysis.json"
@@ -144,7 +144,7 @@ def main():
             papers = json.load(f)
     else:
         print(f'Error: missing file: {papers_path}')
-        exit(1)
+        sys.exit(1)
 
     corpus = {}
     print(f'Loading {corpus_path}...', flush=True)
@@ -153,7 +153,7 @@ def main():
             corpus = json.load(f)
     else:
         print(f'Error: missing file: {corpus_path}')
-        exit(1)
+        sys.exit(1)
 
     # Start server
     print(f'Starting server...\n', flush=True)
